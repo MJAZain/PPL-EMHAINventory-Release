@@ -1,0 +1,31 @@
+.loginPage {
+    @apply flex justify-center items-center h-screen bg-gray-100;
+}
+
+.loginDecor {
+    @apply flex flex-col items-center justify-center h-screen;
+}
+
+.loginTitle {
+    @apply font-poppins font-semibold text-[128px] leading-[40px] tracking-[0] text-center text-[rgba(87,83,77,0.7)] translate-y-[-170px];
+}
+
+.loginImg {
+    @apply w-[200px] h-auto absolute bottom-0 mb-0
+}
+
+.loginContainer {
+    @apply max-w-md w-full p-10 bg-white rounded-lg border-2 border-neutral-400 translate-x-[160px];
+}
+
+.loginLogin {
+    @apply text-2xl font-semibold text-center mb-6 mt-8;
+}
+
+.loginField {
+    @apply w-full h-10;
+}
+
+.loginButton {
+    @apply w-full mb-8;
+}

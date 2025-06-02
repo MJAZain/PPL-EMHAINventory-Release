@@ -1,0 +1,21 @@
+// package model
+
+// import (
+// 	"time"
+
+// 	"gorm.io/datatypes"
+// )
+
+// type AuditTrail struct {
+// 	ID            uint           `gorm:"primaryKey" json:"id"`
+// 	TableName     string         `gorm:"size:50;not null" json:"table_name"`
+// 	RecordID      uint           `gorm:"not null" json:"record_id"`
+// 	Action        string         `gorm:"size:10;not null" json:"action"` // INSERT, UPDATE, DELETE
+// 	OldData       datatypes.JSON `json:"old_data"`                       // Nullable
+// 	NewData       datatypes.JSON `json:"new_data"`                       // Nullable
+// 	ChangedBy     uint           `gorm:"not null" json:"changed_by"`
+// 	ChangedByName string         `gorm:"size:100;not null" json:"changed_by_name"`
+// 	ChangedAt     time.Time      `gorm:"autoCreateTime" json:"changed_at"`
+// 	IPAddress     string         `gorm:"size:50" json:"ip_address"`
+// 	UserAgent     string         `gorm:"type:text" json:"user_agent"`
+// }

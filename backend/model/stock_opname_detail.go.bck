@@ -1,0 +1,32 @@
+// package model
+
+// import (
+// 	"time"
+// )
+
+// type StockOpnameDetail struct {
+// 	DetailID              int       `json:"detail_id" gorm:"primaryKey;autoIncrement"`
+// 	OpnameID              string    `json:"opname_id" gorm:"index"`
+// 	ProductID             string    `json:"product_id" gorm:"index"`
+// 	SystemStock           int       `json:"system_stock" gorm:"not null"`
+// 	ActualStock           int       `json:"actual_stock" gorm:"not null"`
+// 	Discrepancy           int       `json:"discrepancy" gorm:"not null"`
+// 	DiscrepancyPercentage float64   `json:"discrepancy_percentage" gorm:"not null"`
+// 	AdjustmentNote        string    `json:"adjustment_note"`
+// 	PerformedBy           string    `json:"performed_by" gorm:"not null"`
+// 	PerformedAt           time.Time `json:"performed_at" gorm:"autoCreateTime"`
+// 	//Product               product.Product `json:"product" gorm:"foreignKey:ProductID"`
+// }
+
+// func (d *StockOpnameDetail) CalculateDiscrepancy() {
+// 	d.Discrepancy = d.ActualStock - d.SystemStock
+// 	if d.SystemStock == 0 {
+// 		if d.ActualStock == 0 {
+// 			d.DiscrepancyPercentage = 0
+// 		} else {
+// 			d.DiscrepancyPercentage = 100
+// 		}
+// 	} else {
+// 		d.DiscrepancyPercentage = float64(d.Discrepancy) * 100.0 / float64(d.SystemStock)
+// 	}
+// }
