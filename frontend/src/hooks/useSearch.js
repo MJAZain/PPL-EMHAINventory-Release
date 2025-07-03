@@ -1,5 +1,8 @@
-// hooks/useSearch.js
 import { useState, useMemo } from "react";
+
+function getNestedValue(obj, path) {
+  return path.split(".").reduce((o, key) => (o ? o[key] : ""), obj);
+}
 
 export default function useSearch(data, keys = []) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -9,7 +12,7 @@ export default function useSearch(data, keys = []) {
 
     return data.filter((item) =>
       keys.some((key) =>
-        String(item[key]).toLowerCase().includes(searchTerm.toLowerCase())
+        String(getNestedValue(item, key)).toLowerCase().includes(searchTerm.toLowerCase())
       )
     );
   }, [data, searchTerm, keys]);

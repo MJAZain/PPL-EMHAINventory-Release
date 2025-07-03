@@ -1,66 +1,100 @@
-import React from 'react';
+import React from "react";
 
 function InputField({
   label,
   value,
-  onChange,
+  onChange, 
   type = "text",
   placeholder,
   className = "",
+  id,
+  isRequired,
+  error,
+  min,
 }) {
   const isNumeric = type === "number";
+  const isPhoneField = type === 'phone';
 
   const handleKeyDown = (e) => {
+    // Block unwanted characters for number fields
     if (isNumeric) {
       const invalidChars = ["e", "E", "+", "-", "."];
       if (invalidChars.includes(e.key)) {
         e.preventDefault();
       }
     }
+
+    // Allow only digits for phone fields
+    if (isPhoneField && !/^\d$/.test(e.key) && e.key !== "Backspace" && e.key !== "Tab") {
+      e.preventDefault();
+    }
   };
 
   const handleInput = (e) => {
-    if (isNumeric) {
-      let inputValue = e.target.value;
+    let inputValue = e.target.value;
 
-      // Prevent leading zero (unless user is typing "0." which we allow)
-      if (/^0\d+/.test(inputValue)) {
-        inputValue = inputValue.replace(/^0+/, '');
-        e.target.value = inputValue;
-        // Manually call onChange to update value in parent
-        onChange({ target: { value: inputValue } });
-      }
+    // For phone fields: strip out anything that's not a digit
+    if (isPhoneField) {
+      inputValue = inputValue.replace(/\D/g, ""); // Remove non-digit characters
+      e.target.value = inputValue;
+    }
+
+    // For number fields: remove leading zeroes
+    if (isNumeric) {
+      inputValue = inputValue.replace(/^0+/, "");
+      e.target.value = inputValue;
+    }
+
+    if (onChange) {
+      onChange({ target: { name: e.target.name, value: inputValue } });
     }
   };
 
   const handleWheel = (e) => {
     if (isNumeric) {
-      e.target.blur(); // Prevent value from changing on scroll
+      e.target.blur();
     }
   };
 
   return (
     <div className="mb-4">
-      <label className="block mb-1 text-sm font-medium text-gray-700">{label}</label>
+      {label && (
+        <label
+          htmlFor={id}
+          className="block mb-1 text-sm font-medium text-gray-700"
+        >
+          {label}
+          {isRequired && <span className="text-red-500 ml-1">*</span>}
+        </label>
+      )}
       <input
+        id={id}
+        name={id || label?.toLowerCase().replace(/\s+/g, "-")}
         type={type}
         value={value}
         onChange={onChange}
         onKeyDown={handleKeyDown}
         onInput={handleInput}
         onWheel={handleWheel}
-        min={isNumeric ? 1 : undefined}
+        min={min || (isNumeric ? 1 : undefined)}
         placeholder={placeholder}
         className={`
-          border border-[var(--neutral-400,#A1A1A1)]
-          bg-[var(--neutral-200,#E5E5E5)]
+          border ${
+            error ? "border-red-500" : "border-black"
+          }
           rounded-[6px]
-          px-[20px]
+          px-[20px] 
+          py-2 
           text-base
-          placeholder-gray-500
+          placeholder-black
+          w-full
+          focus:outline-none focus:ring-1 ${
+            error ? "focus:ring-red-500" : "focus:ring-blue-500"
+          }
           ${className}
         `}
       />
+      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
     </div>
   );
 }

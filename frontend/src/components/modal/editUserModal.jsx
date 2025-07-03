@@ -5,6 +5,7 @@ import Button from "../buttonComp";
 import useUserActions from "../../hooks/useUserAction";
 import { apiClient } from "../../config/api";
 import Toast from "../toast";
+import { getFriendlyErrorMessage } from "../../utils/errorHandler";
 
 const initialFormState = {
   full_name: "",
@@ -79,10 +80,8 @@ export default function EditUserModal({ isOpen, close, userId, onSuccess }) {
       onSuccess?.();
       close();
     } catch (err) {
-      setToast({
-        message: err?.response?.data?.message || "Gagal mengedit user.",
-        type: "error",
-      });
+      const message = getFriendlyErrorMessage(err);
+      setToast({ message, type: "error" });
     } finally {
       setLoading(false);
     }

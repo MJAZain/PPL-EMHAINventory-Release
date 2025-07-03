@@ -5,10 +5,19 @@ import (
 	"go-gin-auth/controller"
 	"go-gin-auth/internal/brand"
 	"go-gin-auth/internal/category"
+	"go-gin-auth/internal/doctor"
+	"go-gin-auth/internal/drug_category"
 	"go-gin-auth/internal/incomingProducts"
+	"go-gin-auth/internal/location"
+	"go-gin-auth/internal/nonpbf"
 	"go-gin-auth/internal/outgoingProducts"
+	"go-gin-auth/internal/patient"
+	"go-gin-auth/internal/pbf"
 	"go-gin-auth/internal/product"
+	"go-gin-auth/internal/shift"
+	"go-gin-auth/internal/stock_correction"
 	storagelocation "go-gin-auth/internal/storage_location"
+	"go-gin-auth/internal/supplier"
 	"go-gin-auth/internal/unit"
 	"go-gin-auth/middleware"
 	"go-gin-auth/repository"
@@ -33,7 +42,7 @@ func SetupRouter() *gin.Engine {
 
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:3000"}, // alamat asal React kamu
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
@@ -169,6 +178,31 @@ func SetupRouter() *gin.Engine {
 		apiAuth.Use(middleware.AuthAdminMiddleware())
 		storagelocation.StorageLocationRouter(apiAuth)
 		brand.BrandRouter(apiAuth)
+		supplier.SupplierRouter(apiAuth)
+		location.LocationRouter(apiAuth)
+		doctor.DoctorRouter(apiAuth)
+		patient.PatientRouter(apiAuth)
+		drug_category.DrugCategoryRouter(apiAuth)
+		shift.ShiftRouter(apiAuth)
+		stock_correction.StockCorrectionRouter(apiAuth)
+
+		pbfRouter := api.Group("/incoming-pbf")
+		pbfRouter.Use(middleware.AuthMiddleware()).GET("", pbf.GetAllIncomingPBF)
+		pbfRouter.Use(middleware.AuthMiddleware()).POST("", pbf.CreateIncomingPBF)
+		pbfRouter.Use(middleware.AuthMiddleware()).GET("/:id", pbf.GetIncomingPBFByID)
+		pbfRouter.Use(middleware.AuthMiddleware()).PUT("/:id", pbf.UpdateIncomingPBF)
+		pbfRouter.Use(middleware.AuthMiddleware()).DELETE("/:id", pbf.DeleteIncomingPBF)
+
+		nonpbfService := nonpbf.NewIncomingNonPBFService(config.DB)
+		nonpbfController := nonpbf.NewIncomingNonPBFController(nonpbfService)
+
+		nonpbfRouter := api.Group("/incoming-nonpbf", middleware.AuthMiddleware())
+		nonpbfRouter.GET("", nonpbfController.GetAll)
+		nonpbfRouter.POST("", nonpbfController.Create)
+		nonpbfRouter.GET("/:id", nonpbfController.GetByID)
+		nonpbfRouter.PUT("/:id", nonpbfController.Update)
+		nonpbfRouter.DELETE("/:id", nonpbfController.Delete)
+
 	}
 	return r
 }

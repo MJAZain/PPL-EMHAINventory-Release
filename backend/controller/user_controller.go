@@ -123,7 +123,9 @@ func Login(c *gin.Context) {
 		return
 	}
 
+	user.Password = "-"
 	utils.Respond(c, http.StatusOK, "Login successful", nil, gin.H{
+		"user":  user,
 		"token": tokenString,
 	})
 }

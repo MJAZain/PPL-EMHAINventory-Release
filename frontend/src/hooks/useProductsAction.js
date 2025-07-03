@@ -11,7 +11,7 @@ export default function useProductActions() {
     setError(null);
     try {
       const res = await apiClient.get(`/products/${id}`);
-      return res.data;
+      return res.data.data;
     } catch (err) {
       setError(err);
       throw err;

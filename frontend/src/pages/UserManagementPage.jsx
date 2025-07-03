@@ -2,8 +2,6 @@ import React, { useEffect, useState } from "react";
 import SearchBar from "../components/SearchBar";
 import DataTable from "../components/tableCompo";
 import ActionMenu from "../components/ActionMenu";
-import AddUserModal from "../components/modal/addUserModal";
-import EditUserModal from "../components/modal/editUserModal";
 import useSearch from "../hooks/useSearch";
 import useUserActions from "../hooks/useUserAction";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -11,6 +9,9 @@ import Sidebar from "../components/Sidebar";
 import { apiClient } from "../config/api";
 import { PlusIcon } from '@heroicons/react/24/solid';
 import Toast from "../components/toast";
+
+import AddUserModal from "../components/modal/addUserModal";
+import EditUserModal from "../components/modal/editUserModal";
 
 function AturUsersPage() {
   const [users, setUsers] = useState([]);
@@ -21,6 +22,9 @@ function AturUsersPage() {
 
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [roleFilter, setRoleFilter] = useState("all");
 
   const { getUserById, deleteUser, reactivateUser, deactivateUser } = useUserActions();
 
@@ -108,27 +112,27 @@ function AturUsersPage() {
     }
     };
 
-const handleDeactivateRequest = async (id) => {
-  console.log("Deactivating user ID:", id);
+  const handleDeactivateRequest = async (id) => {
+    console.log("Deactivating user ID:", id);
 
-  try {
-    await deactivateUser(id);
-    setToast({ message: "User berhasil dinonaktifkan.", type: "success" });
+    try {
+      await deactivateUser(id);
+      setToast({ message: "User berhasil dinonaktifkan.", type: "success" });
 
-    const data = await fetchUsers();
-    if (Array.isArray(data)) {
-      setUsers(data);
-    } else if (Array.isArray(data?.data)) {
-      setUsers(data.data);
+      const data = await fetchUsers();
+      if (Array.isArray(data)) {
+        setUsers(data);
+      } else if (Array.isArray(data?.data)) {
+        setUsers(data.data);
+      }
+    } catch (err) {
+      console.error("Deactivation error:", err);
+      setToast({
+        message: err.response?.data?.message || err.message || "Gagal menonaktifkan user.",
+        type: "error",
+      });
     }
-  } catch (err) {
-    console.error("Deactivation error:", err);
-    setToast({
-      message: err.response?.data?.message || err.message || "Gagal menonaktifkan user.",
-      type: "error",
-    });
-  }
-};
+  };
 
 
   const handleSuccess = async ({ message, closeModal }) => {
@@ -156,13 +160,27 @@ const handleDeactivateRequest = async (id) => {
       closeModal: () => setIsAddOpen(false),
     });
 
-  const { searchTerm, setSearchTerm, filteredData } = useSearch(users, ["full_name"]);
+  const { searchTerm, setSearchTerm } = useSearch(users, ["full_name"]);
+
+  const searchedUsers = useSearch(users, ["full_name"]).filteredData;
+
+  const filteredUsers = searchedUsers.filter((user) => {
+    const statusMatch =
+      statusFilter === "all" ||
+      (statusFilter === "active" && user.active) ||
+      (statusFilter === "inactive" && !user.active);
+
+    const roleMatch =
+      roleFilter === "all" || user.role?.toLowerCase() === roleFilter;
+
+    return statusMatch && roleMatch;
+  });
 
   const columns = [
     { header: "Nama", accessor: "full_name" },
     { header: "Peran", accessor: "role" },
     { header: "Nomor HP", accessor: "phone" },
-    { header: "EMail", accessor: "email" },
+    { header: "Email", accessor: "email" },
     {
         header: "Status",
         accessor: "active",
@@ -199,13 +217,36 @@ const handleDeactivateRequest = async (id) => {
       <div className="bg-white min-h-screen">
       <Sidebar />
       </div>
-      <div className="p-5 w-full py-10">
-        <h1 className="text-2xl font-bold mb-6">Daftar User</h1>
-          <SearchBar
-            value={searchTerm}
-            onChange={setSearchTerm}
-            placeholder="Cari User"
-          />
+
+        <div className="p-5 w-full py-10">
+          <h1 className="text-2xl font-bold mb-6">Daftar Pengguna</h1>
+          <div className="flex flex-wrap gap-4 items-center mb-5">
+            <SearchBar
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder="Cari User"
+            />
+
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm h-10 mb-4"
+            >
+              <option value="all">Semua Status</option>
+              <option value="active">Aktif</option>
+              <option value="inactive">Nonaktif</option>
+            </select>
+
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm h-10 mb-4"
+            >
+              <option value="all">Semua Peran</option>
+              <option value="admin">Admin</option>
+              <option value="pegawai">Pegawai</option>
+            </select>
+          </div>
 
         <div className="border border-gray-400 rounded-xl bg-white p-5">
 
@@ -219,7 +260,7 @@ const handleDeactivateRequest = async (id) => {
             </button>
           </div>
 
-          <DataTable columns={columns} data={filteredData} showIndex={true} />
+          <DataTable columns={columns} data={filteredUsers} showIndex={true} />
 
           <AddUserModal
             isOpen={isAddOpen}

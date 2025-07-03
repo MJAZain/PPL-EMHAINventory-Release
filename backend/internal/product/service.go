@@ -2,8 +2,10 @@ package product
 
 import (
 	"errors"
+	"go-gin-auth/config"
 	"go-gin-auth/internal/brand"
 	"go-gin-auth/internal/category"
+	"go-gin-auth/internal/drug_category"
 	storagelocation "go-gin-auth/internal/storage_location"
 	"go-gin-auth/internal/unit"
 )
@@ -14,6 +16,7 @@ type ProductService struct {
 	unitRepo            unit.UnitRepository
 	brandRepo           brand.BrandRepository
 	storageLocationRepo storagelocation.StorageLocationRepository
+	drugCategoryRepo    drug_category.Repository
 }
 
 func NewProductService() *ProductService {
@@ -23,6 +26,7 @@ func NewProductService() *ProductService {
 		unitRepo:            unit.NewUnitRepository(),
 		brandRepo:           brand.NewBrandRepository(),
 		storageLocationRepo: storagelocation.NewStorageLocationRepository(),
+		drugCategoryRepo:    drug_category.NewRepository(config.DB),
 	}
 }
 
@@ -51,6 +55,10 @@ func (s *ProductService) CreateProduct(product Product) (Product, error) {
 		return product, errors.New("storage location not found")
 	}
 
+	if _, err := s.drugCategoryRepo.GetByID(product.DrugCategoryID); err != nil {
+		return product, errors.New("drug category not found")
+	}
+
 	if err := validateProductFields(product); err != nil {
 		return product, err
 	}
@@ -75,6 +83,10 @@ func (s *ProductService) UpdateProduct(id uint, product Product) (Product, error
 		return product, errors.New("storage location not found")
 	}
 
+	if _, err := s.drugCategoryRepo.GetByID(product.DrugCategoryID); err != nil {
+		return product, errors.New("drug category not found")
+	}
+
 	return s.productRepo.UpdateProduct(id, product)
 }
 
@@ -92,14 +104,17 @@ func validateProductFields(product Product) error {
 	if product.Barcode == "" {
 		return errors.New("barcode is required")
 	}
-	if product.PackageContent == 0 {
-		return errors.New("package content is required")
-	}
-	if product.PurchasePrice == 0 {
-		return errors.New("purchase price is required")
-	}
 	if product.SellingPrice == 0 {
 		return errors.New("selling price is required")
+	}
+	if product.DosageDescription == "" {
+		return errors.New("dosage description is required")
+	}
+	if product.CompositionDescription == "" {
+		return errors.New("composition description is required")
+	}
+	if product.MinStock < 0 {
+		return errors.New("min stock cannot be negative")
 	}
 	return nil
 }

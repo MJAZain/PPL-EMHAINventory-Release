@@ -1,24 +1,47 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import InputField from "../components/inputField";
 import Button from "../components/buttonComp";
 import useLogin from "../hooks/useUser";
 import myImage from '../media/loginDecor.png';
 import '../styles/loginStyles.css';
 import Toast from "../components/toast";
-import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 
 function LoginPage() {
-  const { email, setEmail, password, setPassword, loading, error, success, login } = useLogin();
+  const {
+    email,
+    setEmail,
+    password,
+    setPassword,
+    loading,
+    error,
+    success,
+    login,
+  } = useLogin();
+  
   const [toast, setToast] = useState(null);
+  const location = useLocation();
 
   useEffect(() => {
-  if (success) {
-    setToast({ message: success, type: "success" });
-  }
-  if (error) {
-    setToast({ message: error, type: "error" });
-  }
+    if (success) {
+      setToast({ message: success, type: "success" });
+    }
+    if (error) {
+      setToast({ message: error, type: "error" });
+    }
   }, [success, error]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const errorParam = params.get("error");
+
+    if (errorParam === "inactive") {
+      setToast({
+        message: "Akun Anda telah dinonaktifkan.",
+        type: "error",
+      });
+    }
+  }, [location.search]);
 
   const handleLogin = async () => {
     await login();
@@ -27,12 +50,13 @@ function LoginPage() {
   return (
     <div className="loginPage">
       {toast && (
-          <Toast
-            message={toast.message}
-            type={toast.type}
-            onClose={() => setToast(null)}
-          />
-        )}
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       <div className="loginDecor">
         <h1 className="loginTitle">EIMS</h1>
         <img src={myImage} alt="Description" className="loginImg" />
@@ -57,7 +81,7 @@ function LoginPage() {
           placeholder="Masukkan password"
           className="loginField"
         />
-        
+
         <Button onClick={handleLogin} disabled={loading} className="loginButton">
           {loading ? "Masuk..." : "Masuk"}
         </Button>

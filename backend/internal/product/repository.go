@@ -5,6 +5,7 @@ import (
 	"go-gin-auth/config"
 	"go-gin-auth/internal/brand"
 	"go-gin-auth/internal/category"
+	"go-gin-auth/internal/drug_category"
 	storagelocation "go-gin-auth/internal/storage_location"
 	"go-gin-auth/internal/unit"
 	"log"
@@ -46,6 +47,11 @@ func (r *ProductRepository) GetProductByID(id uint) (Product, error) {
 		product.Brand = brand
 	}
 
+	var drugCategory drug_category.DrugCategory
+	if err := r.db.First(&drugCategory, product.DrugCategoryID).Error; err == nil {
+		product.DrugCategory = drugCategory
+	}
+
 	return product, nil
 }
 
@@ -82,6 +88,11 @@ func (r *ProductRepository) GetProducts() ([]Product, error) {
 		var brand brand.Brand
 		if err := r.db.First(&brand, products[i].BrandID).Error; err == nil {
 			products[i].Brand = brand
+		}
+
+		var drugCategory drug_category.DrugCategory
+		if err := r.db.First(&drugCategory, products[i].DrugCategoryID).Error; err == nil {
+			products[i].DrugCategory = drugCategory
 		}
 	}
 	return products, nil

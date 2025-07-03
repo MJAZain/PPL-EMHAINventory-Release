@@ -43,7 +43,7 @@ export default function EditCategoryModal({ isOpen, close, categoryId, onSuccess
         onSuccess();
       } catch (err) {
         setToast({
-          message: err.message || "Gagal menambahkan kategori.",
+          message: "Gagal menambahkan kategori/Data Duplikat",
           type: "error",
         });
       } finally {

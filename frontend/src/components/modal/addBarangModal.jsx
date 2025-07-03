@@ -1,198 +1,159 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+import { useEffect } from "react";
 import Modal from "./modal";
 import InputField from "../inputField";
 import Button from "../buttonComp";
 import { apiClient } from "../../config/api";
 import Toast from "../toast";
+import { getFriendlyErrorMessage } from "../../utils/errorHandler";
 
-const initialFormState = {
-  name: "",
-  code: "",
-  barcode: "",
-  category_id: "",
-  unit_id: "",
-  package_content: "",
-  purchase_price: "",
-  selling_price: "",
-  wholesale_price: "",
-  stock_buffer: "",
-  storage_location: "",
-  brand: "",
-};
+const formFields = [
+  { label: "Nama", key: "name", placeholder: "Nama produk" },
+  { label: "SKU", key: "code", placeholder: "Kode unik produk" },
+  { label: "Barcode", key: "barcode", placeholder: "Barcode produk" },
+  { label: "Stok Minimal", key: "min_stock", placeholder: "Stok Minimal", type: "number" },
+  { label: "Harga Jual", key: "selling_price", placeholder: "Harga jual", type: "number" },
+  { label: "Golongan Obat", key: "drug_category_id", type: "select", optionsKey: "drugCategories" },
+  { label: "Kategori Obat", key: "category_id", type: "select", optionsKey: "categories" },
+  { label: "Satuan", key: "unit_id", type: "select", optionsKey: "units" },
+  { label: "Lokasi", key: "storage_location_id", type: "select", optionsKey: "storageLocations" },
+  { label: "Merk", key: "brand_id", type: "select", optionsKey: "brands" },
+  { label: "Dosis", key: "dosage_description", placeholder: "Deskripsi dosis" },
+  { label: "Komposisi", key: "composition_description", placeholder: "Deskripsi komposisi" },
+];
 
-const labelMap = {
-  name: "Nama",
-  code: "Kode Obat",
-  barcode: "Barcode",
-  category_id: "Kategori Obat",
-  unit_id: "Satuan Obat",
-  package_content: "Banyaknya Isi",
-  purchase_price: "Harga Beli",
-  selling_price: "Harga Jual",
-  wholesale_price: "Harga Jual ",
-  stock_buffer: "Stok Buffer",
-  storage_location: "Lokasi Obat",
-  brand: "Nama Brand",
-};
-
-
-function AddBarangModal({ isOpen, close, onSubmit }) {
-  const [form, setForm] = useState(initialFormState);
+export default function AddProductModal({ isOpen, close, onSuccess }) {
+  const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
-  const [categories, setCategories] = useState([]);
+
+  const [brands, setBrands] = useState([]);
+  const [drugCategories, setDrugCategories] = useState([]);
   const [units, setUnits] = useState([]);
-  const [loadingCategories, setLoadingCategories] = useState(false);
-  const [loadingUnits, setLoadingUnits] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [storageLocations, setStorageLocations] = useState([]);
+
+  const generateInitialFormState = () => {
+    const state = {};
+    formFields.forEach(({ key }) => {
+      state[key] = "";
+    });
+    return state;
+  };
+
+  const [form, setForm] = useState(generateInitialFormState());
+
 
   useEffect(() => {
-    const fetchCategories = async () => {
-      setLoadingCategories(true);
+    const fetchAllDropdownData = async () => {
       try {
-        const res = await apiClient.get("/categories/");
-        setCategories(res.data.data);
-      } catch (err) {
-        console.error("Failed to fetch categories", err);
-      } finally {
-        setLoadingCategories(false);
+        const [brandsRes, drugCatRes, unitsRes, catRes, locationsRes] = await Promise.all([
+          apiClient.get("/brands?page=1&limit=10000"),
+          apiClient.get("/drug-categories/"),
+          apiClient.get("/units/"),
+          apiClient.get("/categories/"),
+          apiClient.get("/storage-locations?page=1&limit=10000"),
+        ]);
+
+        setBrands(brandsRes?.data?.data?.data || []);
+        setDrugCategories(drugCatRes?.data?.data || []);
+        setUnits(unitsRes?.data?.data || []);
+        setCategories(catRes?.data?.data || []);
+        setStorageLocations(locationsRes?.data?.data?.data || []);
+      } catch (error) {
+        console.error("Failed to fetch dropdown data:", error);
       }
     };
 
-    const fetchUnits = async () => {
-      setLoadingUnits(true);
-      try {
-        const res = await apiClient.get("/units/");
-        setUnits(res.data.data);
-      } catch (err) {
-        console.error("Failed to fetch units", err);
-      } finally {
-        setLoadingUnits(false);
-      }
-    };
-
-    if (isOpen) {
-      fetchCategories();
-      fetchUnits();
-    }
-  }, [isOpen]);
+    fetchAllDropdownData();
+  }, []);
 
   const handleChange = (key) => (e) => {
     setForm({ ...form, [key]: e.target.value });
   };
 
   const handleSubmit = async () => {
-  const allFilled = Object.values(form).every(val => val.toString().trim() !== "");
-  if (!allFilled) {
-    setToast({
-      message: "Tolong isi setiap kolom.",
-      type: "error"
-    });;
-    return;
-  }
-
-  for (let field of numericFields) {
-    const value = Number(form[field]);
-    if (isNaN(value) || value < 1) {
-      setToast({
-        message: `${labelMap[field] || field} harus diisi dengan angka lebih dari 0.`,
-        type: "error"
-      });
+    const allFilled = Object.values(form).every((val) => val?.toString().trim() !== "");
+    if (!allFilled) {
+      setToast({ message: "Semua kolom harus diisi.", type: "error" });
       return;
     }
-  }
 
-  const payload = {
-    name: form.name.trim(),
-    code: form.code.trim(),
-    barcode: form.barcode.trim(),
-    category_id: Number(form.category_id),
-    unit_id: Number(form.unit_id),
-    package_content: form.package_content ? Number(form.package_content) : null,
-    purchase_price: form.purchase_price ? Number(form.purchase_price) : null,
-    selling_price: form.selling_price ? Number(form.selling_price) : null,
-    wholesale_price: form.wholesale_price ? Number(form.wholesale_price) : null,
-    stock_buffer: form.stock_buffer ? Number(form.stock_buffer) : null,
-    storage_location: form.storage_location.trim(),
-    brand: form.brand.trim()
-  };
+    // Convert fields to correct types
+    const payload = {
+      ...form,
+      drug_category_id: Number(form.drug_category_id),
+      category_id: Number(form.category_id),
+      unit_id: Number(form.unit_id),
+      selling_price: Number(form.selling_price),
+      storage_location_id: Number(form.storage_location_id),
+      brand_id: Number(form.brand_id),
+      min_stock: Number(form.min_stock || 0), // default to 0 if empty
+    };
 
-  if (!form.package_content || isNaN(Number(form.package_content))) {
-  setToast({ message: "Isi Paket harus diisi dengan angka yang valid.", type: "error" });
-  return;
-  }
-
+    setLoading(true);
     try {
+      console.log("Sending payload:", payload);
       await apiClient.post("/products/", payload);
-      setForm(initialFormState);
-      close();
-      onSubmit?.();
-    }  catch (error) {
-  if (error.response) {
-    console.log("Server error:", error.response.data);
-    setToast({
-      message: error.response.data.message || "Gagal menambahkan barang.",
-      type: "error"
-    });
-  } else {
-    console.error("Unexpected error:", error);
-    setToast({
-      message: "Gagal menambahkan barang.",
-      type: "error"
-    });
-  }
-}
-
-  };
-
-  const numericFields = [
-    "stock_buffer",
-    "selling_price",
-    "purchase_price",
-    "wholesale_price",
-    "package_content",
-  ];
-
-  const selectFieldsConfig = {
-    category_id: {
-      label: "Kategori",
-      options: categories,
-      loading: loadingCategories,
-      optionLabelKey: "name",
-    },
-    unit_id: {
-      label: "Satuan",
-      options: units,
-      loading: loadingUnits,
-      optionLabelKey: "name",
-    },
+      setToast({ message: "Produk berhasil ditambahkan!", type: "success" });
+      onSuccess();
+      setForm(generateInitialFormState());
+    } catch (err) {
+      const message = getFriendlyErrorMessage(err);
+      setToast({ message, type: "error" });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <Modal isOpen={isOpen} close={close}>
-      <h2 className="text-xl font-semibold mb-4 text-center">Tambah Barang</h2>
+    <Modal isOpen={isOpen} close={close} contentClassName="w-full max-w-2xl">
+      <h2 className="text-xl font-semibold mb-4 text-center py-5">Tambah Obat</h2>
+      <div className="max-h-[60vh] overflow-y-auto pr-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+        {formFields.map(({ label, key, placeholder, type, optionsKey }) => {
+          const isTextArea = key.includes("description");
 
-      <div className="grid grid-cols-2 max-h-[60vh] overflow-y-auto pr-2 gap-5">
-        {Object.keys(initialFormState).map((key) => {
-          if (selectFieldsConfig[key]) {
-            const { label, options, loading, optionLabelKey } = selectFieldsConfig[key];
+          if (type === "select") {
+            const optionsRaw = {
+              brands,
+              drugCategories,
+              units,
+              categories,
+              storageLocations,
+            }[optionsKey];
+
+            const options = Array.isArray(optionsRaw) ? optionsRaw : [];
+
             return (
               <div key={key} className="flex flex-col">
-                <label className="mb-1 font-medium">{label}</label>
-                {loading ? (
-                  <p>Loading {label.toLowerCase()}...</p>
-                ) : (
-                  <select
-                    value={form[key]}
-                    onChange={handleChange(key)}
-                    className="w-full h-10 border rounded px-2"
-                  >
-                    <option value="">{`Pilih ${label}`}</option>
-                    {options.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option[optionLabelKey]}
-                      </option>
-                    ))}
-                  </select>
-                )}
+                <label className="text-sm font-medium mb-1">{label}</label>
+                <select
+                  value={form[key]}
+                  onChange={handleChange(key)}
+                  className="border border-gray-300 rounded-md px-3 py-2"
+                >
+                  <option value="">Pilih {label}</option>
+                  {options.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            );
+          }
+
+          if (isTextArea) {
+            return (
+              <div key={key} className="flex flex-col col-span-full">
+                <label className="text-sm font-medium mb-1">{label}</label>
+                <textarea
+                  value={form[key]}
+                  onChange={handleChange(key)}
+                  placeholder={placeholder}
+                  rows={4}
+                  className="border border-gray-300 rounded-md px-3 py-2 resize-none"
+                />
               </div>
             );
           }
@@ -200,26 +161,24 @@ function AddBarangModal({ isOpen, close, onSubmit }) {
           return (
             <InputField
               key={key}
-              label={labelMap[key] || key.charAt(0).toUpperCase() + key.slice(1)}
+              label={label}
               value={form[key]}
               onChange={handleChange(key)}
-              placeholder={`Masukkan ${labelMap[key] || key}`}
-              type={numericFields.includes(key) ? "number" : "text"}
-              min={numericFields.includes(key) ? 1 : undefined}
-              className="w-full h-10"
+              placeholder={placeholder}
+              type={type || "text"}
             />
           );
         })}
       </div>
+    </div>
 
-      <div className="grid grid-cols-2 pr-5 max-h-[60vh] overflow-y-auto gap-5 py-5">
-        <Button
-          onClick={() => setForm(initialFormState)}
-          className="bg-gray-200 text-black border-none"
-        >
-          Reset
+      <div className="mt-6 flex justify-between gap-4">
+        <Button onClick={handleSubmit} disabled={loading} className="w-full">
+          {loading ? "Menyimpan..." : "Simpan"}
         </Button>
-        <Button onClick={handleSubmit}>Simpan</Button>
+        <button onClick={() => setForm(generateInitialFormState())} variant="outline" className="w-full bg-gray-200 border border-black text-black rounded-md py-2 hover:bg-gray-300 transition">
+          Reset
+        </button>
       </div>
 
       {toast && (
@@ -232,5 +191,3 @@ function AddBarangModal({ isOpen, close, onSubmit }) {
     </Modal>
   );
 }
-
-export default AddBarangModal;

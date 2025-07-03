@@ -40,7 +40,7 @@ export default function EditUnitModal({ isOpen, close, unitId, onSuccess }) {
     onSuccess();
   } catch (err) {
     setToast({
-      message: err.message || "Gagal mengedit satuan.",
+      message: "Gagal mengedit satuan/Data Duplikat",
       type: "error",
     });
   } finally {

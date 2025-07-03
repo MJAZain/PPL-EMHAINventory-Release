@@ -21,13 +21,6 @@ export default function AddUnitModal({ isOpen, close, onSuccess }) {
 
   const handleSubmit = async () => {
     const allFilled = Object.values(form).every((val) => val.trim() !== "");
-    if (!allFilled) {
-      setToast({
-          message: "Semua field harus diisi.",
-          type: "error",
-        });
-      return;
-    }
 
     setLoading(true);
     try {

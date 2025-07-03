@@ -3,7 +3,7 @@ import InputField from "./inputField";
 
 function SearchBar({ value, onChange, placeholder = "Search..." }) {
   return (
-    <div className="mb-4 max-w-md">
+    <div className="max-w-md">
       <InputField
         label=""
         value={value}

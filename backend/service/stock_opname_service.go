@@ -65,11 +65,11 @@ func (s *stockOpnameService) Create(opname *opname.StockOpname) error {
 			return err
 		}
 
-		d.SystemStock = obat.StockBuffer
+		// d.SystemStock = obat.StockBuffer
 		d.Discrepancy = d.ActualStock - d.SystemStock
 
 		if d.Discrepancy != 0 {
-			obat.StockBuffer = d.ActualStock
+			// obat.StockBuffer = d.ActualStock
 			if err := db.Save(&obat).Error; err != nil {
 				return err
 			}
@@ -304,11 +304,11 @@ func (s *stockOpnameService) AddProductToDraft(opnameID string, productID string
 	}
 	// Create new detail
 	detail := &opname.StockOpnameDetail{
-		OpnameID:    opnameID,
-		ProductID:   productIDUint,
-		SystemStock: product.StockBuffer, // This needs to be retrieved from the product repository
-		ActualStock: 0,                   // Will be filled during the opname process
-		PerformedBy: data.CreatedBy,      // Initially set to the creator of the opname
+		OpnameID:  opnameID,
+		ProductID: productIDUint,
+		// SystemStock: product.StockBuffer, // This needs to be retrieved from the product repository
+		ActualStock: 0,              // Will be filled during the opname process
+		PerformedBy: data.CreatedBy, // Initially set to the creator of the opname
 		PerformedAt: time.Now(),
 	}
 
@@ -616,9 +616,9 @@ func (s *stockOpnameService) GetProducts(ctx context.Context) ([]dto.ProductStoc
 	var result []dto.ProductStockResponse
 	for _, p := range products {
 		result = append(result, dto.ProductStockResponse{
-			Name:            p.Name,
-			Code:            p.Code,
-			StockBuffer:     p.StockBuffer,
+			Name: p.Name,
+			Code: p.Code,
+			// StockBuffer:     p.StockBuffer,
 			StorageLocation: p.StorageLocation.Name,
 			Category: dto.CategorySimpleDTO{
 				ID:   p.Category.ID,
