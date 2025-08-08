@@ -3,6 +3,7 @@ package nonpbf
 import (
 	"errors"
 	"fmt"
+	"go-gin-auth/internal/stock"
 	"time"
 
 	"gorm.io/gorm"
@@ -114,6 +115,12 @@ func (s *IncomingNonPBFService) Create(req CreateIncomingNonPBFRequest) (*Incomi
 			tx.Rollback()
 			return nil, err
 		}
+
+		// **UPDATE STOCK - TAMBAH STOK MASUK**
+		if err := s.updateStock(tx, detailReq, "ADD"); err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("failed to update stock: %v", err)
+		}
 	}
 
 	tx.Commit()
@@ -134,6 +141,29 @@ func (s *IncomingNonPBFService) Update(id uint, req UpdateIncomingNonPBFRequest)
 		return nil, err
 	}
 
+	// **GET OLD DETAILS FOR STOCK REVERSAL**
+	var oldDetails []IncomingNonPBFDetail
+	if err := tx.Where("incoming_non_pbf_id = ?", id).Find(&oldDetails).Error; err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	// **REVERT OLD STOCK CHANGES**
+	for _, oldDetail := range oldDetails {
+		detailReq := CreateIncomingDetailRequest{
+			ProductID:        oldDetail.ProductID,
+			ProductCode:      oldDetail.ProductCode,
+			ProductName:      oldDetail.ProductName,
+			Unit:             oldDetail.Unit,
+			IncomingQuantity: oldDetail.IncomingQuantity,
+			BatchNumber:      oldDetail.BatchNumber,
+			ExpiryDate:       oldDetail.ExpiryDate,
+		}
+		if err := s.updateStock(tx, detailReq, "SUBTRACT"); err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("failed to revert stock: %v", err)
+		}
+	}
 	// Calculate total purchase
 	var totalPurchase float64
 	for _, detail := range req.Details {
@@ -206,6 +236,11 @@ func (s *IncomingNonPBFService) Update(id uint, req UpdateIncomingNonPBFRequest)
 			tx.Rollback()
 			return nil, err
 		}
+		// **UPDATE STOCK - TAMBAH STOK BARU**
+		if err := s.updateStock(tx, detailReq, "ADD"); err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("failed to update stock: %v", err)
+		}
 	}
 
 	tx.Commit()
@@ -225,7 +260,28 @@ func (s *IncomingNonPBFService) Delete(id uint) error {
 		}
 		return err
 	}
-
+	// **GET DETAILS FOR STOCK REVERSAL**
+	var details []IncomingNonPBFDetail
+	if err := tx.Where("incoming_non_pbf_id = ?", id).Find(&details).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	// **REVERT STOCK CHANGES**
+	for _, detail := range details {
+		detailReq := CreateIncomingDetailRequest{
+			ProductID:        detail.ProductID,
+			ProductCode:      detail.ProductCode,
+			ProductName:      detail.ProductName,
+			Unit:             detail.Unit,
+			IncomingQuantity: detail.IncomingQuantity,
+			BatchNumber:      detail.BatchNumber,
+			ExpiryDate:       detail.ExpiryDate,
+		}
+		if err := s.updateStock(tx, detailReq, "SUBTRACT"); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("failed to revert stock: %v", err)
+		}
+	}
 	// Delete details first
 	if err := tx.Where("incoming_non_pbf_id = ?", id).Delete(&IncomingNonPBFDetail{}).Error; err != nil {
 		tx.Rollback()
@@ -242,6 +298,50 @@ func (s *IncomingNonPBFService) Delete(id uint) error {
 	return nil
 }
 
+// **FUNGSI UTAMA UNTUK UPDATE STOCK**
+func (s *IncomingNonPBFService) updateStock(tx *gorm.DB, detail CreateIncomingDetailRequest, operation string) error {
+	var stockdata stock.Stock
+
+	// Cari stok berdasarkan ProductID
+	err := tx.Where("product_id = ?", detail.ProductID).
+		First(&stockdata).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// **BUAT STOCK BARU JIKA BELUM ADA**
+			if operation == "ADD" {
+				newStock := stock.Stock{
+					ProductID:    *detail.ProductID,
+					Quantity:     detail.IncomingQuantity,
+					ExpiryDate:   detail.ExpiryDate,
+					MinimumStock: 10, // Atur sesuai kebutuhan
+				}
+				return tx.Create(&newStock).Error
+			}
+			// Jika operation SUBTRACT tapi stock tidak ada, return error
+			return fmt.Errorf("stock not found for product %s batch %s", detail.ProductCode, detail.BatchNumber)
+		}
+		return err
+	}
+
+	// **UPDATE STOCK YANG SUDAH ADA**
+	var newQuantity int
+	switch operation {
+	case "ADD":
+		newQuantity = stockdata.Quantity + detail.IncomingQuantity
+	case "SUBTRACT":
+		newQuantity = stockdata.Quantity - detail.IncomingQuantity
+		if newQuantity < 0 {
+			return fmt.Errorf("insufficient stock for product %s batch %s", detail.ProductCode, detail.BatchNumber)
+		}
+	}
+
+	// ✅ Update quantity dan expired-nya
+	return tx.Model(&stockdata).Updates(map[string]interface{}{
+		"quantity":    newQuantity,
+		"expiry_date": detail.ExpiryDate,
+	}).Error
+}
 func (s *IncomingNonPBFService) generateTransactionCode() string {
 	now := time.Now()
 	return fmt.Sprintf("NONPBF-%s-%d", now.Format("20060102"), now.Unix())

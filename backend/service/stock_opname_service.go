@@ -9,6 +9,7 @@ import (
 	"go-gin-auth/internal/adjustment"
 	"go-gin-auth/internal/opname"
 	"go-gin-auth/internal/product"
+	"go-gin-auth/internal/stock"
 	"go-gin-auth/repository"
 	"go-gin-auth/utils"
 	"strconv"
@@ -500,6 +501,33 @@ func (s *stockOpnameService) CompleteOpname(opnameID string, completedBy string)
 				tx.Rollback()
 				return nil, err
 			}
+			// Update atau Insert ke tabel stocks
+			stockRepo := stock.NewRepository()
+			existingStock, err := stockRepo.GetStockByProductID(tx, detail.ProductID)
+			if err != nil {
+				tx.Rollback()
+				return nil, err
+			}
+
+			if existingStock == nil {
+				// Insert baru
+				newStock := &stock.Stock{
+					ProductID: detail.ProductID,
+					Quantity:  detail.ActualStock,
+				}
+				if err := stockRepo.CreateStock(tx, newStock); err != nil {
+					tx.Rollback()
+					return nil, err
+				}
+			} else {
+				// Update existing
+				existingStock.Quantity = detail.ActualStock
+				if err := stockRepo.UpdateStock(tx, existingStock); err != nil {
+					tx.Rollback()
+					return nil, err
+				}
+			}
+
 		}
 	}
 

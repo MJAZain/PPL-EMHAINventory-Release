@@ -10,6 +10,10 @@ import (
 type Repository interface {
 	GetProductStockById(id uint) (*Stock, error)
 	UpdateProductStock(id uint, quantity int, isAdd bool) error
+	// Tambahan untuk transaksi opname dan koreksi
+	GetStockByProductID(tx *gorm.DB, productID uint) (*Stock, error)
+	CreateStock(tx *gorm.DB, s *Stock) error
+	UpdateStock(tx *gorm.DB, s *Stock) error
 }
 
 type repository struct {
@@ -55,4 +59,25 @@ func (r *repository) UpdateProductStock(id uint, quantity int, isAdd bool) error
 	}
 
 	return nil
+}
+
+// contoh fungsi di repo, sesuaikan dengan implementasimu
+func (r *repository) GetStockByProductID(tx *gorm.DB, productID uint) (*Stock, error) {
+	var stock Stock
+	err := tx.Where("product_id = ?", productID).First(&stock).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil // artinya belum ada stock
+		}
+		return nil, err
+	}
+	return &stock, nil
+}
+
+func (r *repository) CreateStock(tx *gorm.DB, s *Stock) error {
+	return tx.Create(s).Error
+}
+
+func (r *repository) UpdateStock(tx *gorm.DB, s *Stock) error {
+	return tx.Save(s).Error
 }

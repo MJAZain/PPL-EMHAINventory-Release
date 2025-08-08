@@ -192,7 +192,7 @@ const today = new Date().toISOString().split("T")[0];
                       onChange={handleChange(key)}
                       placeholder={placeholder}
                       rows={4}
-                      className="border border-gray-300 rounded-md px-3 py-2 resize-none bg-[var(--neutral-200,#E5E5E5)]"
+                      
                     />
                   </div>
                 );

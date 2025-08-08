@@ -11,8 +11,8 @@ type Supplier struct {
 	ContactNumber string `gorm:"type:varchar(20);not null" json:"contact_number" form:"contact_number"`
 	Status        string `gorm:"type:varchar(20);not null;default:'Aktif'" json:"status" form:"status"`
 
-	ProvinceID string `gorm:"type:varchar(10);not null" json:"province_id" form:"province_id"`
-	CityID     string `gorm:"type:varchar(10);not null" json:"city_id" form:"city_id"`
+	ProvinceID string `gorm:"type:varchar(10);not null" json:"-" form:"province_id"`
+	CityID     string `gorm:"type:varchar(10);not null" json:"-" form:"city_id"`
 
 	Province string `gorm:"-" json:"province"`
 	City     string `gorm:"-" json:"city"`

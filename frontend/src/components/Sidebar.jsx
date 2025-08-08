@@ -6,34 +6,27 @@ import { apiClient } from "../config/api";
 export default function Sidebar() {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
-  const [showPelacakan, setShowPelacakan] = useState(false);
   const [showSetting, setShowSetting] = useState(false);
+  const [showPelacakan, setShowPelacakan] = useState(false);
   const [showRiwayat, setShowRiwayat] = useState(false);
   const [showApotek, setShowApotek] = useState(false);
+  const [showPengeluaran, setShowPengeluaran] = useState(false);
+  const [showStok, setShowStok] = useState(false);
 
   const isActive = (path) =>
     location.pathname === path || location.pathname.startsWith(path + "/");
 
-  const isAnyChildActiveMasterBarang =
-    isActive("/satuan") ||
-    isActive("/kategori") ||
-    isActive("/storage-locations");
-  isActive("/brands");
+  const isAnyChildActiveSetting =
+    isActive("/satuan") || isActive("/kategori") || isActive("/storage-locations") || isActive("/brands");
+
   useEffect(() => {
-    if (isAnyChildActiveMasterBarang) {
-      setShowSetting(true);
-    }
-  }, [isAnyChildActiveMasterBarang]);
+    if (isAnyChildActiveSetting) setShowSetting(true);
+  }, [isAnyChildActiveSetting]);
 
   const toggleSidebar = () => setIsOpen((prev) => !prev);
-  const togglePelacakanDropdown = () => setShowPelacakan((prev) => !prev);
-  const toggleSettingDropdown = () => setShowSetting((prev) => !prev);
-  const toggleRiwayatDropdown = () => setShowRiwayat((prev) => !prev);
-  const toggleApotekDropdown = () => setShowApotek((prev) => !prev);
 
   return (
     <div className="relative">
-      {/* Hamburger Button */}
       {!isOpen && (
         <button
           onClick={toggleSidebar}
@@ -43,10 +36,9 @@ export default function Sidebar() {
         </button>
       )}
 
-      {/* Sidebar */}
       {isOpen && (
-        <div className="fixed top-0 left-0 h-full w-64 bg-white shadow-lg z-50 p-4">
-          {/* Close Button */}
+        <div className="fixed top-0 left-0 h-full w-64 bg-white shadow-lg z-50 p-4 overflow-y-auto">
+          {/* Header */}
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-lg font-bold translate-x-20">EIMS</h2>
             <button
@@ -57,23 +49,63 @@ export default function Sidebar() {
             </button>
           </div>
 
-          {/* Dashboard */}
           <Link
             to="/dashboard"
             className={`block px-4 py-2 rounded hover:bg-gray-100 ${
               isActive("/dashboard") ? "bg-gray-200" : ""
             }`}
           >
-            Tabel Barang
+            Dashboard
           </Link>
-          {/*
+          <Link
+            to="/sales-analytics"
+            className={`block px-4 py-2 rounded hover:bg-gray-100 ${
+              isActive("/sales-analytics") ? "bg-gray-200" : ""
+            }`}
+          >
+            Laporan Penjualan
+          </Link>
+          <Link
+            to="/profit"
+            className={`block px-4 py-2 rounded hover:bg-gray-100 ${
+              isActive("/profit") ? "bg-gray-200" : ""
+            }`}
+          >
+            Laporan Laba/Rugi
+          </Link>
+          {/* Master Data */}
+          <Link
+            to="/master-obat"
+            className={`block px-4 py-2 rounded hover:bg-gray-100 ${
+              isActive("/master-obat") ? "bg-gray-200" : ""
+            }`}
+          >
+            Tabel Master Barang
+          </Link>
+
+          {/* Master Setting */}
+          <Dropdown
+            label="Setting Master Barang"
+            isOpen={showSetting}
+            onToggle={() => setShowSetting((prev) => !prev)}
+            activePaths={["/golongan", "/satuan", "/kategori", "/brands", "/storage-locations"]}
+            links={[
+              { to: "/golongan", label: "Master Golongan" },
+              { to: "/satuan", label: "Master Satuan" },
+              { to: "/kategori", label: "Master Kategori" },
+              { to: "/brands", label: "Master Brands" },
+              { to: "/storage-locations", label: "Master Lokasi Penyimpanan" },
+            ]}
+          />
+
+          {/* Shift Management */}
           <Link
             to="/shift-resep"
             className={`block px-4 py-2 rounded hover:bg-gray-100 ${
               isActive("/shift-resep") ? "bg-gray-200" : ""
             }`}
           >
-            Buka Shift Kasir dengan Resep
+            Buka Shift Kasir Resep Dokter
           </Link>
           <Link
             to="/shift-tanpa-resep"
@@ -81,220 +113,79 @@ export default function Sidebar() {
               isActive("/shift-tanpa-resep") ? "bg-gray-200" : ""
             }`}
           >
-            Buka Shift Kasir
+            Buka Shift Kasir Bebas
           </Link>
-          */}
 
-          {/* Master Setting Dropdown */}
-          <button
-            onClick={toggleSettingDropdown}
-            className={`flex items-center justify-between w-full px-4 py-2 mt-2 rounded hover:bg-gray-100 ${
-              isActive("/satuan") ||
-              isActive("/kategori") ||
-              isActive("/storage-locations")
-                ? "bg-gray-200"
-                : ""
-            }`}
-          >
-            <span>Setting Master Barang</span>
-            {showSetting ||
-            isActive("/satuan") ||
-            isActive("/kategori") ||
-            isActive("/storage-locations") ? (
-              <ChevronUp size={18} />
-            ) : (
-              <ChevronDown size={18} />
-            )}
-          </button>
+          {/* Riwayat */}
+          <Dropdown
+            label="Riwayat Transaksi"
+            isOpen={showRiwayat}
+            onToggle={() => setShowRiwayat((prev) => !prev)}
+            activePaths={[
+              "/shift-riwayat",
+              "/regular-riwayat",
+              "/pres-riwayat",
+              "/riwayat-pbf",
+              "/riwayat-non-pbf",
+            ]}
+            links={[
+              { to: "/shift-riwayat", label: "Riwayat Shift" },
+              { to: "/regular-riwayat", label: "Penjualan Bebas" },
+              { to: "/pres-riwayat", label: "Penjualan Resep" },
+              { to: "/riwayat-pbf", label: "Pemesanan PBF" },
+              { to: "/riwayat-non-pbf", label: "Pemesanan Non-PBF" },
+            ]}
+          />
 
-          {showSetting && (
-            <div className="ml-4">
-              <Link
-                to="/golongan"
-                className={`block px-4 py-1 hover:bg-gray-100 rounded ${
-                  isActive("/golongan") ? "bg-gray-200" : ""
-                }`}
-              >
-                Master Golongan
-              </Link>
-              <Link
-                to="/satuan"
-                className={`block px-4 py-1 hover:bg-gray-100 rounded ${
-                  isActive("/satuan") ? "bg-gray-200" : ""
-                }`}
-              >
-                Master Satuan
-              </Link>
-              <Link
-                to="/kategori"
-                className={`block px-4 py-1 hover:bg-gray-100 rounded ${
-                  isActive("/kategori") ? "bg-gray-200" : ""
-                }`}
-              >
-                Master Kategori
-              </Link>
-              <Link
-                to="/brands"
-                className={`block px-4 py-1 hover:bg-gray-100 rounded ${
-                  isActive("/brands") ? "bg-gray-200" : ""
-                }`}
-              >
-                Master Brands
-              </Link>
-              <Link
-                to="/storage-locations"
-                className={`block px-4 py-1 hover:bg-gray-100 rounded ${
-                  isActive("/storage-locations") ? "bg-gray-200" : ""
-                }`}
-              >
-                Master Lokasi Penyimpanan
-              </Link>
-            </div>
-          )}
+          {/* Pelacakan */}
+          <Dropdown
+            label="Pelacakan Barang Masuk"
+            isOpen={showPelacakan}
+            onToggle={() => setShowPelacakan((prev) => !prev)}
+            activePaths={["/pbf-detail", "/non-pbf-detail"]}
+            links={[
+              { to: "/pbf-detail", label: "Barang Masuk PBF" },
+              { to: "/non-pbf-detail", label: "Barang Masuk Non-PBF" },
+            ]}
+          />
 
-          {/* Pelacakan Barang Dropdown */}
-          <button
-            onClick={togglePelacakanDropdown}
-            className="flex items-center justify-between w-full px-4 py-2 mt-2 rounded hover:bg-gray-100"
-          >
-            <span>Pelacakan Barang Masuk</span>
-            {showPelacakan ? (
-              <ChevronUp size={18} />
-            ) : (
-              <ChevronDown size={18} />
-            )}
-          </button>
+          {/* Pengeluaran */}
+          <Dropdown
+            label="Atur Pengeluaran"
+            isOpen={showPengeluaran}
+            onToggle={() => setShowPengeluaran((prev) => !prev)}
+            activePaths={["/atur-jenis", "/atur-pengeluaran"]}
+            links={[
+              { to: "/atur-jenis", label: "Jenis Pengeluaran" },
+              { to: "/atur-pengeluaran", label: "Pengeluaran" },
+            ]}
+          />
 
-          {showPelacakan && (
-            <div className="ml-4">
-              <Link
-                to="/pbf-detail"
-                className={`block px-4 py-1 hover:bg-gray-100 rounded ${
-                  isActive("/pbf-detail") ? "bg-gray-200" : ""
-                }`}
-              >
-                Barang Masuk PBF
-              </Link>
-              <Link
-                to="/non-pbf-detail"
-                className={`block px-4 py-1 hover:bg-gray-100 rounded ${
-                  isActive("/non-pbf-detail") ? "bg-gray-200" : ""
-                }`}
-              >
-                Barang Masuk Non-PBF
-              </Link>
-            </div>
-          )}
+          {/* Stok */}
+          <Dropdown
+            label="Manajemen Stok"
+            isOpen={showStok}
+            onToggle={() => setShowStok((prev) => !prev)}
+            activePaths={["/draft", "/koreksi"]}
+            links={[
+              { to: "/draft", label: "Draft Stock Opname" },
+              { to: "/koreksi", label: "Koreksi Stok" },
+            ]}
+          />
 
-          {/* Riwayat Barang Dropdown */}
-          <button
-            onClick={toggleRiwayatDropdown}
-            className="flex items-center justify-between w-full px-4 py-2 mt-2 rounded hover:bg-gray-100"
-          >
-            <span>Riwayat Transaksi</span>
-            {showRiwayat ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-          </button>
-
-          {showRiwayat && (
-            <div className="ml-4">
-              <Link
-                to="/riwayat-pbf"
-                className={`block px-4 py-1 hover:bg-gray-100 rounded ${
-                  isActive("/riwayat-pbf") ? "bg-gray-200" : ""
-                }`}
-              >
-                Riwayat Pemesanan PBF
-              </Link>
-              <Link
-                to="/riwayat-non-pbf"
-                className={`block px-4 py-1 hover:bg-gray-100 rounded ${
-                  isActive("/riwayat-non-pbf") ? "bg-gray-200" : ""
-                }`}
-              >
-                Riwayat Pemesanan Non-PBF
-              </Link>
-            {/*
-            <Link
-                to="/laporan-terjual"
-                className={`block px-4 py-1 rounded hover:bg-gray-100 ${
-                  isActive("/laporan-terjual") ? "bg-gray-200" : ""
-                }`}
-              >
-                Riwayat Laporan Kasir
-              </Link>
-              */}
-            </div>
-          )}
-
-          {/* Pelacakan Barang Dropdown */}
-          <button
-            onClick={toggleApotekDropdown}
-            className="flex items-center justify-between w-full px-4 py-2 mt-2 rounded hover:bg-gray-100"
-          >
-            <span>Atur Data Apotek</span>
-            {showApotek ? (
-              <ChevronUp size={18} />
-            ) : (
-              <ChevronDown size={18} />
-            )}
-          </button>
-
-          {showApotek && (
-            <div className="ml-4">
-              <Link
-                to="/user"
-                className={`block px-4 py-2 mt-2 rounded hover:bg-gray-100 ${
-                  isActive("/user") ? "bg-gray-200" : ""
-                }`}
-              >
-                Atur Karyawan
-              </Link>
-
-              <Link
-                to="/doctor"
-                className={`block px-4 py-2 mt-2 rounded hover:bg-gray-100 ${
-                  isActive("/doctor") ? "bg-gray-200" : ""
-                }`}
-              >
-                Atur Dokter
-              </Link>
-
-              <Link
-                to="/patients"
-                className={`block px-4 py-2 mt-2 rounded hover:bg-gray-100 ${
-                  isActive("/patients") ? "bg-gray-200" : ""
-                }`}
-              >
-                Atur Pasien
-              </Link>
-
-              <Link
-                to="/supplier"
-                className={`block px-4 py-2 mt-2 rounded hover:bg-gray-100 ${
-                  isActive("/Supplier") ? "bg-gray-200" : ""
-                }`}
-              >
-                Atur Supplier
-              </Link>
-            </div>
-          )}
-{/* <Link
-                to="/stock-opname"
-                className={`block px-4 py-1 hover:bg-gray-100 rounded ${
-                  isActive("/stock-opname") ? "bg-gray-200" : ""
-                }`}
-              >
-                Stock Opname
-              </Link>
-                           <Link
-                to="/koreksi"
-                className={`block px-4 py-1 hover:bg-gray-100 rounded ${
-                  isActive("/koreksi") ? "bg-gray-200" : ""
-                }`}
-              >
-                Koreksi Stok
-              </Link> */}
-              
+          {/* Apotek */}
+          <Dropdown
+            label="Atur Data Apotek"
+            isOpen={showApotek}
+            onToggle={() => setShowApotek((prev) => !prev)}
+            activePaths={["/user", "/doctor", "/patients", "/supplier"]}
+            links={[
+              { to: "/user", label: "Atur Karyawan" },
+              { to: "/doctor", label: "Atur Dokter" },
+              { to: "/patients", label: "Atur Pasien" },
+              { to: "/supplier", label: "Atur Supplier" },
+            ]}
+          />
 
           {/* Logout */}
           <button
@@ -305,8 +196,7 @@ export default function Sidebar() {
               } catch (err) {
                 console.error("Logout API error:", err);
               } finally {
-                localStorage.removeItem("token");
-                localStorage.removeItem("user");
+                localStorage.clear();
                 window.location.href = "/";
               }
             }}
@@ -316,5 +206,44 @@ export default function Sidebar() {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Dropdown helper component
+ */
+function Dropdown({ label, isOpen, onToggle, activePaths, links }) {
+  const location = useLocation();
+  const isActive = (path) =>
+    location.pathname === path || location.pathname.startsWith(path + "/");
+  const isAnyActive = activePaths.some(isActive);
+
+  return (
+    <>
+      <button
+        onClick={onToggle}
+        className={`flex items-center justify-between w-full px-4 py-2 mt-2 rounded hover:bg-gray-100 ${
+          isAnyActive ? "bg-gray-200" : ""
+        }`}
+      >
+        <span>{label}</span>
+        {isOpen || isAnyActive ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+      </button>
+      {isOpen && (
+        <div className="ml-4">
+          {links.map(({ to, label }) => (
+            <Link
+              key={to}
+              to={to}
+              className={`block px-4 py-1 mt-1 rounded hover:bg-gray-100 ${
+                isActive(to) ? "bg-gray-200" : ""
+              }`}
+            >
+              {label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </>
   );
 }

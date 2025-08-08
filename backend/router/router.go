@@ -3,18 +3,26 @@ package router
 import (
 	"go-gin-auth/config"
 	"go-gin-auth/controller"
+	"go-gin-auth/internal/analysis"
+	"go-gin-auth/internal/analytics"
 	"go-gin-auth/internal/brand"
 	"go-gin-auth/internal/category"
+	"go-gin-auth/internal/dashboard"
 	"go-gin-auth/internal/doctor"
 	"go-gin-auth/internal/drug_category"
+	"go-gin-auth/internal/expense"
+	"go-gin-auth/internal/expense_type"
 	"go-gin-auth/internal/incomingProducts"
 	"go-gin-auth/internal/location"
 	"go-gin-auth/internal/nonpbf"
 	"go-gin-auth/internal/outgoingProducts"
 	"go-gin-auth/internal/patient"
 	"go-gin-auth/internal/pbf"
+	"go-gin-auth/internal/prescription"
 	"go-gin-auth/internal/product"
+	"go-gin-auth/internal/sales"
 	"go-gin-auth/internal/shift"
+	"go-gin-auth/internal/stock"
 	"go-gin-auth/internal/stock_correction"
 	storagelocation "go-gin-auth/internal/storage_location"
 	"go-gin-auth/internal/supplier"
@@ -42,7 +50,7 @@ func SetupRouter() *gin.Engine {
 
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:3000"}, // alamat asal React kamu
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
@@ -202,6 +210,52 @@ func SetupRouter() *gin.Engine {
 		nonpbfRouter.GET("/:id", nonpbfController.GetByID)
 		nonpbfRouter.PUT("/:id", nonpbfController.Update)
 		nonpbfRouter.DELETE("/:id", nonpbfController.Delete)
+
+		servicePrescriptions := prescription.NewPrescriptionSaleService(config.DB)
+		handlerPrescriptions := prescription.NewPrescriptionSaleHandler(servicePrescriptions)
+
+		prescriptions := api.Group("/sales/prescriptions")
+		{
+			prescriptions.GET("", handlerPrescriptions.GetAll)
+			prescriptions.GET("/:id", handlerPrescriptions.GetByID)
+			prescriptions.POST("", handlerPrescriptions.Create)
+			prescriptions.PUT("/:id", handlerPrescriptions.Update)
+			prescriptions.DELETE("/:id", handlerPrescriptions.Delete)
+		}
+
+		salesRepo := sales.NewSalesRegularRepository(config.DB)
+		stockRepo := stock.NewRepository()
+		salesService := sales.NewSalesRegularService(config.DB, salesRepo, stockRepo)
+		salesHandler := sales.NewSalesRegularHandler(salesService)
+
+		salesGroup := api.Group("/sales/regular")
+		{
+			salesGroup.GET("", salesHandler.GetAll)
+			salesGroup.GET("/:id", salesHandler.GetByID)
+			salesGroup.POST("", salesHandler.Create)
+			salesGroup.PUT("/:id", salesHandler.Update)
+			salesGroup.DELETE("/:id", salesHandler.Delete)
+		}
+
+		stockService := stock.NewStockService(config.DB)
+		stockHandler := stock.NewStockHandler(stockService)
+		stock := api.Group("/stocks")
+		stockHandler.RegisterRoutes(stock)
+
+		dashboardService := dashboard.NewDashboardService(config.DB)
+		dashboardHandler := dashboard.NewDashboardHandler(dashboardService)
+		dashboard := api.Group("/dashboard")
+		dashboardHandler.DashboardRoutes(dashboard)
+
+		// Initialize service and handler
+		serviceAnalytics := analytics.NewSalesAnalyticsService(config.DB)
+		handlerAnalytics := analytics.NewSalesAnalyticsHandler(serviceAnalytics)
+		analytics := api.Group("/sales/analytics")
+		handlerAnalytics.SetupAnalyticsRoutes(analytics)
+
+		expense_type.ExpenseTypeRouter(api)
+		expense.ExpenseRouter(api)
+		analysis.AnalysisRouter(api)
 
 	}
 	return r

@@ -4,12 +4,15 @@ import (
 	"fmt"
 	"go-gin-auth/config"
 	"go-gin-auth/internal/product"
+	"go-gin-auth/internal/stock"
+	"go-gin-auth/internal/unit"
 	"go-gin-auth/utils"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // Handlers
@@ -81,6 +84,13 @@ func CreateIncomingPBF(c *gin.Context) {
 		paymentDueDate = &parsedDate
 	}
 
+	// **BEGIN TRANSACTION**
+	tx := config.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
 	// Calculate total purchase
 	var totalPurchase float64
 	var details []IncomingPBFDetail
@@ -88,9 +98,16 @@ func CreateIncomingPBF(c *gin.Context) {
 	for _, detailReq := range req.Details {
 		// Get product info
 		var product product.Product
+		// Ambil data produk
 		if err := config.DB.First(&product, detailReq.ProductID).Error; err != nil {
 			utils.Respond(c, http.StatusBadRequest, fmt.Sprintf("Product with ID %d not found", detailReq.ProductID), err.Error(), nil)
 			return
+		}
+
+		// Ambil data unit secara manual
+		var unit unit.Unit
+		if err := config.DB.First(&unit, product.UnitID).Error; err == nil {
+			product.Unit = unit
 		}
 
 		totalPrice := float64(detailReq.Quantity) * detailReq.PurchasePrice
@@ -111,7 +128,7 @@ func CreateIncomingPBF(c *gin.Context) {
 			ProductID:     detailReq.ProductID,
 			ProductCode:   product.Code,
 			ProductName:   product.Name,
-			Unit:          product.Unit.Name,
+			Unit:          unit.Name,
 			Quantity:      detailReq.Quantity,
 			PurchasePrice: detailReq.PurchasePrice,
 			TotalPrice:    totalPrice,
@@ -150,6 +167,21 @@ func CreateIncomingPBF(c *gin.Context) {
 		return
 	}
 
+	// **UPDATE STOCK FOR EACH DETAIL**
+	for _, detail := range details {
+		if err := updateStock(tx, detail, "ADD"); err != nil {
+			tx.Rollback()
+			utils.Respond(c, http.StatusInternalServerError, "Failed to update stock", err.Error(), nil)
+			return
+		}
+	}
+
+	// **COMMIT TRANSACTION**
+	if err := tx.Commit().Error; err != nil {
+		utils.Respond(c, http.StatusInternalServerError, "Failed to commit transaction", err.Error(), nil)
+		return
+	}
+
 	// Load relations for response
 	config.DB.Preload("Details.Product").Preload("Supplier").Preload("User").First(&incomingPBF, incomingPBF.ID)
 
@@ -180,13 +212,36 @@ func UpdateIncomingPBF(c *gin.Context) {
 		return
 	}
 
+	// **BEGIN TRANSACTION**
+	tx := config.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
 	// Check if record exists
 	var existingRecord IncomingPBF
 	if err := config.DB.First(&existingRecord, id).Error; err != nil {
 		utils.Respond(c, http.StatusNotFound, "Record not found", err.Error(), nil)
 		return
 	}
+	// **GET OLD DETAILS FOR STOCK REVERSAL**
+	var oldDetails []IncomingPBFDetail
+	if err := tx.Where("incoming_pbf_id = ?", id).Find(&oldDetails).Error; err != nil {
+		tx.Rollback()
+		utils.Respond(c, http.StatusInternalServerError, "Failed to get old details", err.Error(), nil)
+		return
+	}
 
+	// **REVERT OLD STOCK CHANGES**
+	for _, oldDetail := range oldDetails {
+		if err := updateStock(tx, oldDetail, "SUBTRACT"); err != nil {
+			tx.Rollback()
+			utils.Respond(c, http.StatusInternalServerError, "Failed to revert stock", err.Error(), nil)
+			return
+		}
+	}
 	var req CreateIncomingPBFRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.Respond(c, http.StatusBadRequest, "Invalid request body", err.Error(), nil)
@@ -211,7 +266,19 @@ func UpdateIncomingPBF(c *gin.Context) {
 
 	for _, detailReq := range req.Details {
 		var product product.Product
-		config.DB.First(&product, detailReq.ProductID)
+		// Ambil data produk
+		if err := config.DB.First(&product, detailReq.ProductID).Error; err != nil {
+			utils.Respond(c, http.StatusBadRequest,
+				fmt.Sprintf("Product with ID %d not found", detailReq.ProductID),
+				err.Error(), nil)
+			return
+		}
+
+		// Ambil data unit secara manual
+		var unit unit.Unit
+		if err := config.DB.First(&unit, product.UnitID).Error; err == nil {
+			product.Unit = unit
+		}
 
 		totalPrice := float64(detailReq.Quantity) * detailReq.PurchasePrice
 		totalPurchase += totalPrice
@@ -227,7 +294,7 @@ func UpdateIncomingPBF(c *gin.Context) {
 			ProductID:     detailReq.ProductID,
 			ProductCode:   product.Code,
 			ProductName:   product.Name,
-			Unit:          product.Unit.Name,
+			Unit:          unit.Name,
 			Quantity:      detailReq.Quantity,
 			PurchasePrice: detailReq.PurchasePrice,
 			TotalPrice:    totalPrice,
@@ -258,8 +325,30 @@ func UpdateIncomingPBF(c *gin.Context) {
 	}
 
 	// Create new details
+	// for _, detail := range details {
+	// 	config.DB.Create(&detail)
+	// }
+
+	// Create new details and update stock
 	for _, detail := range details {
-		config.DB.Create(&detail)
+		if err := tx.Create(&detail).Error; err != nil {
+			tx.Rollback()
+			utils.Respond(c, http.StatusInternalServerError, "Failed to create detail", err.Error(), nil)
+			return
+		}
+
+		// **UPDATE STOCK FOR NEW DETAILS**
+		if err := updateStock(tx, detail, "ADD"); err != nil {
+			tx.Rollback()
+			utils.Respond(c, http.StatusInternalServerError, "Failed to update stock", err.Error(), nil)
+			return
+		}
+	}
+
+	// **COMMIT TRANSACTION**
+	if err := tx.Commit().Error; err != nil {
+		utils.Respond(c, http.StatusInternalServerError, "Failed to commit transaction", err.Error(), nil)
+		return
 	}
 
 	// Load updated record with relations
@@ -275,12 +364,35 @@ func DeleteIncomingPBF(c *gin.Context) {
 		utils.Respond(c, http.StatusBadRequest, "Invalid ID", err.Error(), nil)
 		return
 	}
+	// **BEGIN TRANSACTION**
+	tx := config.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
 
 	// Check if record exists
 	var existingRecord IncomingPBF
 	if err := config.DB.First(&existingRecord, id).Error; err != nil {
 		utils.Respond(c, http.StatusNotFound, "Record not found", err.Error(), nil)
 		return
+	}
+	// **GET DETAILS FOR STOCK REVERSAL**
+	var details []IncomingPBFDetail
+	if err := tx.Where("incoming_pbf_id = ?", id).Find(&details).Error; err != nil {
+		tx.Rollback()
+		utils.Respond(c, http.StatusInternalServerError, "Failed to get details", err.Error(), nil)
+		return
+	}
+
+	// **REVERT STOCK CHANGES**
+	for _, detail := range details {
+		if err := updateStock(tx, detail, "SUBTRACT"); err != nil {
+			tx.Rollback()
+			utils.Respond(c, http.StatusInternalServerError, "Failed to revert stock", err.Error(), nil)
+			return
+		}
 	}
 
 	// Delete details first (due to foreign key constraint)
@@ -291,6 +403,54 @@ func DeleteIncomingPBF(c *gin.Context) {
 		utils.Respond(c, http.StatusInternalServerError, "Failed to delete record", err.Error(), nil)
 		return
 	}
+	// **COMMIT TRANSACTION**
+	if err := tx.Commit().Error; err != nil {
+		utils.Respond(c, http.StatusInternalServerError, "Failed to commit transaction", err.Error(), nil)
+		return
+	}
 
 	utils.Respond(c, http.StatusOK, "Record deleted successfully", nil, nil)
+}
+
+// **FUNGSI UTAMA UNTUK UPDATE STOCK**
+func updateStock(tx *gorm.DB, detail IncomingPBFDetail, operation string) error {
+	var stockdata stock.Stock
+
+	err := tx.Where("product_id = ?", detail.ProductID).
+		First(&stockdata).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// **BUAT STOCK BARU JIKA BELUM ADA**
+			if operation == "ADD" {
+				newStock := stock.Stock{
+					ProductID:    detail.ProductID,
+					Quantity:     detail.Quantity,
+					ExpiryDate:   detail.ExpiryDate,
+					MinimumStock: 10, // Atur sesuai kebutuhan
+				}
+				return tx.Create(&newStock).Error
+			}
+			// Jika operation SUBTRACT tapi stock tidak ada, return error
+			return fmt.Errorf("stock not found for product %s batch %s", detail.ProductCode, detail.BatchNumber)
+		}
+		return err
+	}
+
+	// **UPDATE STOCK YANG SUDAH ADA**
+	var newQuantity int
+	switch operation {
+	case "ADD":
+		newQuantity = stockdata.Quantity + detail.Quantity
+	case "SUBTRACT":
+		newQuantity = stockdata.Quantity - detail.Quantity
+		if newQuantity < 0 {
+			return fmt.Errorf("insufficient stock for product %s batch %s", detail.ProductCode, detail.BatchNumber)
+		}
+	}
+
+	return tx.Model(&stockdata).Updates(map[string]interface{}{
+		"Quantity":   newQuantity,
+		"ExpiryDate": detail.ExpiryDate,
+	}).Error
 }

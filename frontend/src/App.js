@@ -1,16 +1,13 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
+import Dashboard from "./pages/Dashboard/DashboardPage";
+import AnalyticsDashboard from "./pages/Laporan/LaporanPenjualan";
+import ProfitAnalysisPage from "./pages/Laporan/LaporanLabaRugi";
+
 import MasterBarangPage from "./pages/MasterBarangPage";
-import BarangMasukPage from "./pages/BarangMasukPage";
 import RegisterUserPage from "./pages/RegisterPage";
 import AturSatuanPage from "./pages/MasterSatuan/AturSatuanPage";
 import AturKategoriPage from "./pages/MasterKategori/AturKategoriPage";
-import AturUsersPage from "./pages/UserManagementPage";
-import BarangMasukDetailPage from "./pages/BarangMasukDetail";
-import BarangKeluarPage from "./pages/BarangKeluarPage";
-import BarangKeluarDetailPage from "./pages/BarangKeluarDetail";
-import StockOpnamePage from "./pages/StockOpname/StockOpname";
-import DraftDetailPage from "./pages/StockOpname/DraftDetailPage";
 
 import StorageLocationPage from "./pages/MasterData/StorageLocationPage";
 import BrandPage from "./pages/MasterData/BrandPage";
@@ -28,25 +25,41 @@ import PBFProductListPage from "./pages/BarangMasukPBF/PBFProductList";
 import RiwayatPBFPage from "./pages/RiwayatTransaksi/RiwayatPBF/RiwayatPBFPage";
 import RiwayatNonPBFPage from "./pages/RiwayatTransaksi/RiwayatNonPbf/RiwayatNonPBFPage";
 
-import ResepShiftUmumPage from "./pages/Shift/ResepShiftUmumPage";
-import TanpaResepShiftUmumPage from "./pages/Shift/TanpaResepShiftUmumPage";
+import TanpaResepShiftUmumPage from "./pages/Shift/TanpaResep/TanpaResepShiftUmumPage";
+import TanpaResepDetailPage from "./pages/Shift/TanpaResep/TanpaResepDetail";
+
+import ResepShiftUmumPage from "./pages/Shift/Resep/ResepShiftUmumPage";
+import ResepDetailPage from "./pages/Shift/Resep/ResepDetail";
+
+import RiwayatShiftPage from "./pages/Shift/RiwayatShiftPage";
+import RiwayatRegularPage from "./pages/Shift/Riwayat/RiwayatRegular";
+import RiwayatPresPage from "./pages/Shift/Riwayat/RiwayatPres";
 
 import KoreksiFormPage from "./pages/KoreksiStok/KoreksiFormPage";
 
 import AturKaryawanPage from "./pages/MasterKaryawan/AturKaryawanPage";
+
+import AturJenisPage from "./pages/MasterJenisPengeluaran/AturJenisPage";
+import AturPengeluaranPage from "./pages/MasterPengeluaran/AturPengeluaranPage";
+
+import OpnameDraftPage from './pages/StockOpname/OpnameDraftPage'
+import OpnameDetailPage from "./pages/StockOpname/OpnameDetailPage";
 
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/" element={<LoginPage />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/sales-analytics" element={<AnalyticsDashboard />} />
+        <Route path="/profit" element={<ProfitAnalysisPage />} />
         <Route path="/user" element={<AturKaryawanPage />} />
 
         <Route path="/doctor" element={<AturDoctorPage />} />
         <Route path="/supplier" element={<AturSuppliersPage />} />
         <Route path="/patients" element={<AturPatientsPage />} />
         <Route path="/register" element={<RegisterUserPage />} />
-        <Route path="/dashboard" element={<MasterBarangPage />} />
+        <Route path="/master-obat" element={<MasterBarangPage />} />
         <Route path="/satuan" element={<AturSatuanPage />} />
         <Route path="/kategori" element={<AturKategoriPage />} />
         <Route path="/golongan" element={<AturGolonganObatPage />} />
@@ -64,18 +77,25 @@ function App() {
         <Route path="/non-pbf-list/:id" element={<NonPBFProductListPage />} />
 
         <Route path="/shift-resep" element={<ResepShiftUmumPage />} />
-        <Route path="/shift-tanpa-resep" element={<TanpaResepShiftUmumPage />} />
+        <Route path="/resep-detail" element={<ResepDetailPage />} />
 
-        <Route path="/stock-opname" element={<StockOpnamePage />} />
-        <Route
-          path="/stock-opname/draft/:draftId"
-          element={<DraftDetailPage />}
-        />
+        <Route path="/shift-tanpa-resep" element={<TanpaResepShiftUmumPage />} />
+        <Route path="/tanpa-resep-detail" element={<TanpaResepDetailPage />} />
+
+        <Route path="/shift-riwayat" element={<RiwayatShiftPage />} />
+        <Route path="/regular-riwayat" element={<RiwayatRegularPage />} />
+        <Route path="/pres-riwayat" element={<RiwayatPresPage />} />
 
         <Route path="/koreksi" element={<KoreksiFormPage />} />
 
         <Route path="/riwayat-pbf" element={<RiwayatPBFPage />} />
         <Route path="/riwayat-non-pbf" element={<RiwayatNonPBFPage />} />
+
+        <Route path="/atur-jenis" element={<AturJenisPage />} />
+        <Route path="/atur-pengeluaran" element={<AturPengeluaranPage />} />
+
+        <Route path="/draft" element={<OpnameDraftPage />} />
+        <Route path="/draft-detail" element={<OpnameDetailPage />} />
       </Routes>
     </Router>
   );

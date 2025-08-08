@@ -75,7 +75,7 @@ func (r *stockOpnameRepository) FindAllFlags() ([]model.StockDiscrepancyFlag, er
 	return flags, err
 }
 func (r *stockOpnameRepository) Delete(id string) error {
-	return r.db.Delete(&opname.StockOpname{}, id).Error
+	return r.db.Where("opname_id = ?", id).Delete(&opname.StockOpname{}).Error
 }
 func (r *stockOpnameRepository) IsExist(id uint) (bool, error) {
 	var count int64
